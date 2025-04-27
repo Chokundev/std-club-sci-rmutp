@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>แดชบอร์ดสมัครชุมนุม</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans Thai', sans-serif;
+      background: url('/img/bg.png') no-repeat center center fixed;
+      background-size: cover;
+      min-height: 100vh;
+      backdrop-filter: blur(5px);
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(15px);
+      border-radius: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 1.5rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+</head>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-FL8MCW3508"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-FL8MCW3508');
+</script>
+
+<body class="flex flex-col items-center p-6 gap-6 text-white">
+
+  <h1 class="text-4xl font-bold text-white mb-4">แดชบอร์ดสมัครสมาชิกชุมนุมนักศึกษา</h1>
+
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6 w-full max-w-6xl">
+    <!-- จำนวนสมัครทั้งหมด -->
+    <div class="glass-card flex flex-col items-center justify-center text-center">
+      <h2 class="text-2xl font-semibold mb-2">สมัครแล้วทั้งหมด</h2>
+      <p id="total-students" class="text-4xl font-bold text-green-500">0</p>
+    </div>
+
+    <!-- ตารางจำนวนแต่ละชุมนุม -->
+    <div class="glass-card col-span-1 md:col-span-3">
+      <h2 class="text-2xl font-semibold mb-4 text-center">จำนวนสมัครแต่ละชุมนุม</h2>
+      <canvas id="clubChart" class="w-full h-64"></canvas>
+    </div>
+
+    <!-- ตารางสมัครตามสาขา -->
+    <div class="glass-card md:col-span-2">
+      <h2 class="text-xl font-semibold mb-2 text-center">จำนวนสมัครตามสาขาวิชา</h2>
+      <table class="w-full text-center">
+        <thead>
+          <tr class="border-b">
+            <th class="py-2">สาขา</th>
+            <th class="py-2">จำนวน</th>
+          </tr>
+        </thead>
+        <tbody id="branch-table-body"></tbody>
+      </table>
+    </div>
+
+    <!-- ตารางสมัครตามชั้นปี -->
+    <div class="glass-card md:col-span-2">
+      <h2 class="text-xl font-semibold mb-2 text-center">จำนวนสมัครตามชั้นปี</h2>
+      <table class="w-full text-center">
+        <thead>
+          <tr class="border-b">
+            <th class="py-2">ชั้นปี</th>
+            <th class="py-2">จำนวน</th>
+          </tr>
+        </thead>
+        <tbody id="year-table-body"></tbody>
+      </table>
+    </div>
+
+    <!-- จำนวนสมัครเลือกชุมนุมเดียว -->
+    <!-- <div class="glass-card flex flex-col items-center justify-center text-center">
+      <h2 class="text-2xl font-semibold mb-2">เลือกสมัครแค่ 1 ชุมนุม</h2>
+      <p id="one-club-students" class="text-4xl font-bold text-blue-500">0</p>
+    </div> -->
+
+  </div>
+
+  <script>
+    
+
+    function updateDashboard(data) {
+      // นับจำนวนสมัครทั้งหมด
+      document.getElementById('total-students').textContent = data.length;
+
+      // นับคนเลือกสมัครแค่ 1 ชุมนุม
+    //   const oneClubOnly = data.filter(d => d['club-1'] && !d['club-2']).length;
+    //   document.getElementById('one-club-students').textContent = oneClubOnly;
+
+      // สร้างตารางตามสาขา
+      const branchCount = {};
+      data.forEach(entry => {
+        branchCount[entry.branch] = (branchCount[entry.branch] || 0) + 1;
+      });
+      const branchTable = document.getElementById('branch-table-body');
+      branchTable.innerHTML = '';
+      for (const [branch, count] of Object.entries(branchCount)) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td class="py-2">${branch}</td><td class="py-2">${count}</td>`;
+        branchTable.appendChild(row);
+      }
+
+      // สร้างตารางตามชั้นปี
+      const yearCount = {};
+      data.forEach(entry => {
+        yearCount[entry.year] = (yearCount[entry.year] || 0) + 1;
+      });
+      const yearTable = document.getElementById('year-table-body');
+      yearTable.innerHTML = '';
+      for (const [year, count] of Object.entries(yearCount)) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td class="py-2">${year}</td><td class="py-2">${count}</td>`;
+        yearTable.appendChild(row);
+      }
+
+      // อัปเดตกราฟ Club
+      renderClubChart(data);
+    }
+
+    let clubChartInstance = null;
+
+    function renderClubChart(data) {
+      const clubCount = {};
+      data.forEach(entry => {
+        if (entry["club-1"]) clubCount[entry["club-1"]] = (clubCount[entry["club-1"]] || 0) + 1;
+        if (entry["club-2"]) clubCount[entry["club-2"]] = (clubCount[entry["club-2"]] || 0) + 1;
+      });
+
+      const ctx = document.getElementById('clubChart').getContext('2d');
+
+      if (clubChartInstance) {
+        clubChartInstance.destroy();
+      }
+
+      clubChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(clubCount),
+          datasets: [{
+            label: 'จำนวนคนสมัคร',
+            data: Object.values(clubCount),
+            backgroundColor: '#60a5fa',
+            borderColor: '#3b82f6',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    function fetchData() {
+        fetch('https://script.google.com/macros/s/AKfycbxVXZQ0H_DqwL9UeYcJ4QWmrYeGLfGVeAipSM2R-2PARmpbAdAuI13nxqy3EV9mDK3dvg/exec') // เปลี่ยน URL ให้เป็นของจริง
+            .then(response => response.json())
+            .then(data => {
+            updateDashboard(data);  // ส่งข้อมูลไปอัปเดตแดชบอร์ด
+            })
+            .catch(error => {
+            console.error("Error fetching data:", error);  // หากเกิดข้อผิดพลาด
+            });
+        }
+
+
+    fetchData();
+    setInterval(fetchData, 5000);
+  </script>
+
+</body>
+</html>
