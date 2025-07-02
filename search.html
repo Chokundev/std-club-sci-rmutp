@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ระบบตรวจสอบข้อมูลชุมนุมนักศึกษา</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <link rel="icon" type="image/x-icon" href="/img/favicon.ico">
+    <meta name="description"
+        content="ระบบตรวจสอบข้อมูลชุมนุมนักศึกษา คณะวิทยาศาสตร์และเทคโนโลยี มทร.พระนคร" />
+    <meta property="og:title" content="HELLO FRESHY SCI 2025 | เปิดโลกกิจกรรม : ชุมนุมนักศึกษา">
+    <meta property="og:image" content="https://std-club.smo-sci-rmutp.org/img/meta.png">
+</head>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-FL8MCW3508"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-FL8MCW3508');
+</script>
+
+<style>
+    @font-face {
+        font-family: spaceFont;
+        src: url(/font/FC\ Active\ Italic.ttf);
+    }
+
+    body {
+        font-family: 'spaceFont';
+        background: url('/img/bg2.png') no-repeat center center fixed;
+        background-size: cover;
+        color: #000000;
+        position: relative;
+        overflow-x: hidden;
+    }
+
+    #tsparticles {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    main,
+    footer {
+        position: relative;
+        z-index: 10;
+    }
+</style>
+
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-4">
+
+    <!-- Header Image -->
+    <img src="/img/system-search.png" alt="header" class="w-full max-w-4xl rounded-lg shadow mb-6" />
+
+    <!-- Input Form -->
+    <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-xl">
+        <h1 class="text-xl font-bold mb-4 text-center">ระบบตรวจสอบข้อมูลการสมัครชุมนุม</h1>
+        <input id="studentId" type="text" placeholder="กรอกรหัสนักศึกษา เช่น 056850201226-9"
+            class="w-full px-4 py-2 border border-gray-300 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <button onclick="checkStudentId()"
+            class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">ค้นหา</button>
+    </div>
+
+    <footer class="text-white pt-8">พัฒนาระบบโดย : สโมสรนักศึกษาคณะวิทยาศาสตร์และเทคโนโลยี มทร.พระนคร</footer>
+
+    <!-- Modal Container -->
+    <div id="modal" class="fixed inset-0 hidden bg-black bg-opacity-50 justify-center items-center z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 relative">
+            <button onclick="closeModal()"
+                class="absolute top-2 right-3 text-gray-500 hover:text-red-600 text-xl">×</button>
+            <h2 class="text-lg font-bold mb-4 text-center">ข้อมูลการสมัครชุมนุม</h2>
+            <table class="w-full border border-gray-300 text-sm">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="border p-2">รหัสนักศึกษา</th>
+                        <th class="border p-2">ชื่อ</th>
+                        <th class="border p-2">สาขา</th>
+                        <th class="border p-2">ชุมนุมที่ 1</th>
+                        <th class="border p-2">ชุมนุมที่ 2</th>
+                    </tr>
+                </thead>
+                <tbody id="resultTable" class="text-center"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbyvfZkZ2akEclf-EKu5V_nft8Pkc0NdlQ1qyfrLH3TSRe7LiKa-3bLEeGXpvZT6KkjZ/exec'; // เปลี่ยนเป็น API จริง
+
+        async function checkStudentId() {
+            const input = document.getElementById('studentId').value.trim();
+
+            const isValidFormat = /^0568\d{8}-\d$/.test(input);
+
+            if (!isValidFormat) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'รูปแบบรหัสไม่ถูกต้อง',
+                    text: 'รหัสนักศึกษาไม่ถูกต้อง หรือไม่ใช่นักศึกษารหัส 68',
+                });
+                return;
+            }
+
+            // แสดง alert โหลดข้อมูล
+            Swal.fire({
+                title: 'กำลังค้นหาข้อมูล...',
+                text: 'โปรดรอสักครู่',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+
+                Swal.close(); // ปิด alert โหลด
+
+                const student = data.find(std => std.std_id === input);
+
+                if (!student) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'ไม่พบข้อมูล',
+                        text: 'ไม่พบนักศึกษานี้ในระบบ',
+                    });
+                    return;
+                }
+
+                // แสดงผลใน Modal
+                const tbody = document.getElementById('resultTable');
+                tbody.innerHTML = `
+      <tr>
+        <td class="border p-2">${student.std_id}</td>
+        <td class="border p-2">${student.name}</td>
+        <td class="border p-2">${student.branch}</td>
+        <td class="border p-2">${student.club1}</td>
+        <td class="border p-2">${student.club2}</td>
+      </tr>
+    `;
+
+                document.getElementById('modal').classList.remove('hidden');
+                document.getElementById('modal').classList.add('flex');
+                document.getElementById('studentId').value = '';
+
+
+            } catch (err) {
+                Swal.close(); // ปิด alert โหลดถ้า error
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถเชื่อมต่อ API ได้',
+                });
+                console.error(err);
+            }
+        }
+
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            document.getElementById('modal').classList.remove('flex');
+        }
+
+        // ปิด modal เมื่อคลิกพื้นหลังดำ
+        document.getElementById('modal').addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+    </script>
+</body>
+
+</html>
